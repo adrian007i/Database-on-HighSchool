@@ -1,0 +1,156 @@
+/*list of queries*/
+--1)Which student has the highest GPA at the end of an academic year in all locations? 
+SELECT STUDENT_ID,FIRST_NAME,LAST_NAME,GPA
+FROM STUDENTS
+WHERE GPA = (SELECT MAX(GPA) 
+	         FROM STUDENTS);
+			 
+--2)What is the highest GPA at the end of an academic year at each location?
+SELECT LOCATION_ID, MAX(GPA)"HIGHEST GPA IN LOCATION"
+FROM STUDENTS
+WHERE GPA != 0.0
+GROUP BY LOCATION_ID;
+			 
+--3)Which male/s AND female/s students have the highest GPA of all four locations? 
+SELECT STUDENT_ID,FIRST_NAME,LAST_NAME,GPA,LOCATION_ID,GENDER
+FROM STUDENTS
+WHERE GPA IN (SELECT MAX(GPA) 
+	          FROM STUDENTS
+              GROUP BY GENDER);
+
+--4)What is the average grade of each subject in all the schools? – Find the average grade for a subject (e.g. math) for all schools.
+SELECT c.SUBJECT_ID, s.TITLE, ROUND (AVG(e.GRADE),2)"AVERAGE GRADE OF SUBJECT"
+FROM CLASSES c JOIN ENROLLMENTS e ON(e.CLASS_ID=c.CLASS_ID) JOIN SUBJECTS s ON(s.SUBJECT_ID=c.SUBJECT_ID)
+GROUP BY c.SUBJECT_ID,s.TITLE
+ORDER BY c.SUBJECT_ID;
+
+--5)What is the highest grade of each subject in all the schools? 
+SELECT c.SUBJECT_ID, s.TITLE, ROUND (MAX(e.GRADE),2)"MAX GRADE OF SUBJECT"
+FROM CLASSES c JOIN ENROLLMENTS e ON(e.CLASS_ID=c.CLASS_ID) JOIN SUBJECTS s ON(s.SUBJECT_ID=c.SUBJECT_ID)
+GROUP BY c.SUBJECT_ID,s.TITLE
+ORDER BY c.SUBJECT_ID;
+
+
+--6)Which student/s got the highest in a class of all locations?
+SELECT CLASS_ID,STUDENT_ID,FIRST_NAME,LAST_NAME,GRADE
+FROM STUDENTS NATURAL JOIN ENROLLMENTS
+WHERE GRADE IN(SELECT MAX(GRADE)
+               FROM ENROLLMENTS
+               GROUP BY CLASS_ID)
+ORDER BY CLASS_ID;
+      			 
+--7)What is the average performance of each level at the end of a year of all locations?
+SELECT STU_LEVEL "STUDENT LEVEL", ROUND(AVG(GPA),2)"GRADE POINT AVERAGE"
+FROM STUDENTS
+GROUP BY STU_LEVEL
+ORDER BY STU_LEVEL;
+
+--8)What is the highest GPA of all levels of all locations?
+SELECT STU_LEVEL"STUDENT LEVEL", MAX(GPA)"HIGHEST GPA OF THAT LEVEL"
+FROM STUDENTS
+GROUP BY STU_LEVEL
+ORDER BY STU_LEVEL;
+
+--9)Which gender presently has the higher average GPA between males and females?
+SELECT CASE GENDER
+                  WHEN 'M' THEN 'MALES HAS A HIGHER AVERAGE GPA OF '|| ROUND(AVG(GPA),3)
+                  ELSE 'FEMALES HAS A HIGHER AVERAGE GPA OF '|| ROUND(AVG(GPA),3)
+                  END "HIGHEST AVERAGE GPA"
+FROM STUDENTS
+HAVING  AVG(GPA)= (SELECT MAX(AVG(GPA))
+                   FROM STUDENTS 
+                   GROUP BY GENDER)
+GROUP BY GENDER;
+
+--10)Which gender has more grade A’s males or females?
+SELECT COUNT(e.GRADE)"AMOUNT OF A'S" ,s.GENDER
+FROM ENROLLMENTS e JOIN STUDENTS s ON(e.STUDENT_ID=s.STUDENT_ID)
+WHERE e.GRADE >=90
+HAVING COUNT(e.GRADE) = (SELECT MAX(COUNT(e.GRADE))
+                        FROM ENROLLMENTS e JOIN STUDENTS s ON(e.STUDENT_ID=s.STUDENT_ID)
+                        WHERE e.GRADE >=90
+                        GROUP BY s.GENDER)
+GROUP BY s.GENDER;
+		
+--11)Which students have a GPA below 2.0 and present have failed a course (70% or less)?
+SELECT STUDENT_ID,FIRST_NAME,LAST_NAME,GPA,LOCATION_ID,GENDER,GRADE "FAILING GRADES"
+FROM STUDENTS NATURAL JOIN ENROLLMENTS 
+WHERE GPA<2 AND GRADE<70;	
+
+--12)Which of all the teachers have a pass rate of below 70%? 
+SELECT TEACHER_ID,FIRST_NAME,LAST_NAME,LOCATION_ID
+FROM TEACHERS 
+WHERE TEACHER_ID IN
+                  (SELECT  c.TEACHER_ID
+                   FROM ENROLLMENTS e JOIN CLASSES c ON (e.CLASS_ID=c.CLASS_ID) 
+                   HAVING AVG(GRADE)<70
+                   GROUP BY c.TEACHER_ID);
+
+--13)Which teacher have the highest pass rate of all locations?
+CREATE VIEW HIGH_PASS_RATE AS (SELECT c.TEACHER_ID, AVG(e.GRADE) AS "AVG_GRADE"
+FROM ENROLLMENTS e JOIN CLASSES c ON (e.CLASS_ID=c.CLASS_ID)
+GROUP BY c.TEACHER_ID);    
+
+
+SELECT h.TEACHER_ID,AVG_GRADE,FIRST_NAME,LAST_NAME 
+FROM HIGH_PASS_RATE h JOIN TEACHERS t ON (h.TEACHER_ID=t.TEACHER_ID)
+WHERE AVG_GRADE=(SELECT MAX(AVG_GRADE) FROM HIGH_PASS_RATE);
+				   
+				   
+--14)Which school has the highest average GPA at the end of the academic year? 
+SELECT LOCATION_ID,ROUND(AVG (GPA),2)"HIGHEST LOCATION GPA"
+FROM STUDENTS
+HAVING AVG(GPA) =(SELECT MAX(AVG(GPA))
+                  FROM STUDENTS
+                  GROUP BY LOCATION_ID)
+
+GROUP BY LOCATION_ID;
+
+--15)Which school has the lowest average GPA?
+SELECT LOCATION_ID,ROUND(AVG (GPA),2)"lOWEST LOCATION GPA"
+FROM STUDENTS
+HAVING AVG(GPA) =(SELECT MIN(AVG(GPA))
+                  FROM STUDENTS
+                  GROUP BY LOCATION_ID)
+
+GROUP BY LOCATION_ID;
+
+--16)Which teacher will be celebrating 20 years employment for the coming year? 
+SELECT TEACHER_ID,FIRST_NAME,LAST_NAME,LOCATION_ID,HIRE_DATE
+FROM TEACHERS
+WHERE EXTRACT (YEAR FROM ADD_MONTHS(HIRE_DATE,240)) = EXTRACT (YEAR FROM SYSDATE)
+      OR EXTRACT (YEAR FROM ADD_MONTHS(HIRE_DATE,240)) = EXTRACT (YEAR FROM SYSDATE)+1;
+
+--17)What is the amount of students in each location and the address of that school?
+SELECT s.LOCATION_ID,(SELECT ADDRESS FROM LOCATIONS l WHERE s.LOCATION_ID=L.LOCATION_ID) "ADDRESS OF SCHOOL",COUNT(STUDENT_ID)"NO. OF STUDENTS"
+FROM STUDENTS s 
+GROUP BY LOCATION_ID
+ORDER BY LOCATION_ID;
+
+--18)What is the amount of teachers in each location and the address of that school?
+SELECT t.LOCATION_ID,(SELECT ADDRESS FROM LOCATIONS l WHERE t.LOCATION_ID=L.LOCATION_ID) "ADDRESS OF SCHOOL",COUNT(TEACHER_ID)"NO. OF TEACHERS"
+FROM TEACHERS t 
+GROUP BY LOCATION_ID
+ORDER BY LOCATION_ID;
+
+--19)Which department has less than 3 teachers in each school? 
+SELECT LOCATION_ID,DEPARTMENT_ID "DEPARTMENT",COUNT(TEACHER_ID)"NO OF TEACHERS IN DEPARTMENT" 
+FROM TEACHERS 
+HAVING COUNT(TEACHER_ID)<3
+GROUP BY LOCATION_ID,DEPARTMENT_ID
+ORDER BY LOCATION_ID,DEPARTMENT_ID;
+
+--20) What will be the new salary of the teachers after the Christmas bonus.
+SELECT TEACHER_ID,FIRST_NAME,LAST_NAME,SALARY, 
+		CASE  WHEN SALARY>4000 THEN TO_CHAR(SALARY*1.2,'999,999,999.99') 
+		ELSE TO_CHAR(SALARY*1.1,'999,999,999.99')
+		END AS "NEW SALARY WITH BONUS"
+FROM TEACHERS 
+ORDER BY TEACHER_ID;
+
+
+
+
+
+
+		
